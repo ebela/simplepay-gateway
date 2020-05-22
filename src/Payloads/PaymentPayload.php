@@ -46,7 +46,7 @@ abstract class PaymentPayload
             'items' => static::items($order),
             'twoStep' => false,
             'maySelectInvoice' => false,
-            'delivery' => static::delivery($order),
+//            'delivery' => static::delivery($order),
         ];
     }
 

@@ -120,17 +120,43 @@ class Gateway extends WC_Payment_Gateway
      */
     public function process_payment($orderId)
     {
+    /*
+    Sikeres
+[24-Apr-2020 11:59:10 UTC] vardump array (
+'body' => '{"salt":"34odhy58wXquxN4Kyuy7ffwIm2VpVJHI",
+  "merchant":"S394701",
+  "orderRef":"wc_order_QTUfqxS6ufsXu",
+  "currency":"HUF",
+  "transactionId":10274405,
+  "timeout":"2020-04-24T14:29:09+02:00",
+  "total":5000.0,
+  "paymentUrl":"https://sandbox.simplepay.hu/pay/pay/pspHU/BTajQ.gN4icr5RGozURaSsuTlU_dPAobwSv6qr.dsGIjg7RXBb"}',
+'signature' => 'kGt35rY88AtvCLrMWiaTTMJga2i1NLfFolAEFmWDeSeDPEbNu99XicNOehzhUZch',
+    )
+    
+        
+    */
         $order = wc_get_order($orderId);
 
         Config::setByCurrency($order->get_currency());
 
         $request = new PaymentRequest($order);
         $response = $request->post();
-
-        return [
+	error_log('vardump '. var_export($response,1));
+	$body = json_decode($response['body']);
+        
+        $return = [
             'result' => $request->valid() ? 'success' : 'error',
-            'redirect' => json_decode($response['body'])->paymentUrl,
         ];
+        
+        if ( isset( $body->paymentUrl ) ) {
+            $return['redirect'] = $body->paymentUrl;
+        }
+        
+        if ( isset( $body->errorCodes ) ) {
+	    //TODO wc_add_notice( 'hibakod: '.var_export($body->errorCodes,1), 'error' );
+        }
+        return $return;
     }
 
     /**
@@ -163,9 +189,12 @@ class Gateway extends WC_Payment_Gateway
         $input = file_get_contents('php://input');
         $payload = json_decode($input, true);
         $order = wc_get_order(wc_get_order_id_by_order_key($payload['orderRef']));
-        Config::setByCurrency($order->get_currency());
+        if ( $order ) {
+	    Config::setByCurrency($order->get_currency());
+        }
 
-        if (! Hash::check($signature, $input) || ! $order) {
+        if ( ! $order || ! Hash::check($signature, $input) ) {
+    	    error_log('no order, payload: '.var_export($payload,1));
             return;
         } elseif (isset($payload['refundStatus']) && $payload['status'] === 'FINISHED') {
             (new IRNHandler($order))->handle($payload);

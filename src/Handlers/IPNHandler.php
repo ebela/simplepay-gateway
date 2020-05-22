@@ -14,6 +14,7 @@ class IPNHandler extends Handler
      */
     public function handle($payload)
     {
+	error_log("IPN event was fired");	//bela
         Log::info(__('IPN event was fired.', 'pine-simplepay'));
 
         $this->order->payment_complete();
